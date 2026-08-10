@@ -63,19 +63,23 @@
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
   }
 
-  function saveSignup(email, role) {
-    try {
-      var key = "mexirent_coming_soon_signups";
-      var existing = JSON.parse(localStorage.getItem(key) || "[]");
-      existing.push({ email: email, role: role, date: new Date().toISOString() });
-      localStorage.setItem(key, JSON.stringify(existing));
-    } catch (err) {
-      /* localStorage no disponible: seguimos sin guardar */
+  async function saveSignup(email, role) {
+    const response = await fetch("/api/subscribe", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: email, role: role }),
+    });
+
+    if (!response.ok) {
+      const data = await response.json();
+      throw new Error(data.error || "Error al registrar");
     }
+
+    return response.json();
   }
 
   if (form) {
-    form.addEventListener("submit", function (event) {
+    form.addEventListener("submit", async function (event) {
       event.preventDefault();
 
       var email = emailInput.value.trim();
@@ -89,23 +93,31 @@
       }
 
       note.classList.remove("is-error");
-      saveSignup(email, role);
-
       submitBtn.disabled = true;
-      submitBtn.textContent = "¡Listo!";
+      submitBtn.textContent = "Enviando...";
 
-      note.textContent =
-        role === "proveedor"
-          ? "Gracias. Te avisamos en cuanto abramos el registro de proveedores."
-          : "Gracias. Te avisamos en cuanto abramos en tu ciudad.";
+      try {
+        await saveSignup(email, role);
 
-      form.reset();
-      document.querySelector("input[name='role'][value='" + role + "']").checked = true;
+        submitBtn.textContent = "¡Listo!";
+        note.textContent =
+          role === "proveedor"
+            ? "Gracias. Te avisamos en cuanto abramos el registro de proveedores."
+            : "Gracias. Te avisamos en cuanto abramos en tu ciudad.";
 
-      setTimeout(function () {
+        form.reset();
+        document.querySelector("input[name='role'][value='" + role + "']").checked = true;
+
+        setTimeout(function () {
+          submitBtn.disabled = false;
+          submitBtn.textContent = "Avísame cuando esté listo";
+        }, 3000);
+      } catch (err) {
+        note.textContent = "Hubo un error. Intenta de nuevo.";
+        note.classList.add("is-error");
         submitBtn.disabled = false;
         submitBtn.textContent = "Avísame cuando esté listo";
-      }, 3000);
+      }
     });
   }
 
