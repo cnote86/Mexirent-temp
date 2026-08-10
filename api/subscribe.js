@@ -10,9 +10,15 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: "Invalid email" });
   }
 
+  // Use different audience based on role
+  const audienceId =
+    role === "proveedor"
+      ? process.env.RESEND_AUDIENCE_PROVIDERS
+      : process.env.RESEND_AUDIENCE_CLIENTS;
+
   try {
     const response = await fetch(
-      `https://api.resend.com/audiences/${process.env.RESEND_AUDIENCE_ID}/contacts`,
+      `https://api.resend.com/audiences/${audienceId}/contacts`,
       {
         method: "POST",
         headers: {
@@ -21,7 +27,6 @@ export default async function handler(req, res) {
         },
         body: JSON.stringify({
           email: email,
-          first_name: role === "proveedor" ? "Proveedor" : "Cliente",
           unsubscribed: false,
         }),
       }
